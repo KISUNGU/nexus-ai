@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusAI - Enterprise AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --primary: #3b82f6;
+            --secondary: #10b981;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --accent: #f59e0b;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f1f5f9;
+            color: var(--dark);
+        }
+        
+        .tech-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        
+        .glow-accent {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+        
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        
+        .message {
+            max-width: 80%;
+            border-radius: 1.5rem;
+        }
+        
+        .user-message {
+            background-color: var(--primary);
+            color: white;
+            border-bottom-right-radius: 0.5rem;
+        }
+        
+        .bot-message {
+            background-color: var(--light);
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 0.5rem;
+        }
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            margin: 0 2px;
+        }
+        
+        .typing-indicator span:nth-child(1) {
+            animation: bounce 1.3s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation: bounce 1.3s infinite ease-in-out 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation: bounce 1.3s infinite ease-in-out 0.4s;
+        }
+        
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .robot-head {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            background-color: var(--light);
+            border-radius: 50% 50% 40% 40%;
+            border: 3px solid var(--dark);
+        }
+        
+        .robot-eye {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            top: 30px;
+        }
+        
+        .robot-eye.left {
+            left: 20px;
+        }
+        
+        .robot-eye.right {
+            right: 20px;
+        }
+        
+        .robot-mouth {
+            position: absolute;
+            width: 30px;
+            height: 8px;
+            background-color: var(--dark);
+            border-radius: 5px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .circuit-bg {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .webhook-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .webhook-active {
+            background-color: var(--secondary);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+        }
+        
+        .webhook-inactive {
+            background-color: #ef4444;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .nav-tab {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            font-weight: 500;
+        }
+        
+        .integration-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .integration-card:hover {
+            transform: translateX(5px);
+            border-left-color: var(--primary);
+        }
+        
+        .chart-container {
+            height: 300px;
+        }
+
+        /* Archive specific styles */
+        .archive-item {
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .archive-item:hover {
+            border-left-color: var(--accent);
+            background-color: #f8fafc;
+        }
+
+        .archive-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 1rem;
+        }
+
+        .archive-success {
+            background-color: #ecfdf5;
+            color: #065f46;
+        }
+
+        .archive-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .archive-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .archive-pagination .active {
+            background-color: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body class="circuit-bg">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="robot-head relative">
+                        <div class="robot-eye left"></div>
+                        <div class="robot-eye right"></div>
+                        <div class="robot-mouth"></div>
+                        <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-3 bg-gray-300 rounded-full"></div>
+                    </div>
+                    <h1 class="tech-font text-2xl md:text-3xl font-bold">Nexus<span class="text-yellow-400">AI</span></h1>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <a href="#" class="nav-tab hover:text-yellow-400 transition" data-tab="dashboard">Dashboard</a>
+                    <a href="#" class="nav-tab hover:text-yellow-400 transition active" data-tab="webhooks">Webhooks</a>
+                    <a href="#" class="nav-tab hover:text-yellow-400 transition" data-tab="analytics">Analytics</a>
+                    <a href="#" class="nav-tab hover:text-yellow-400 transition" data-tab="settings">Settings</a>
+                </nav>
+                <div class="flex items-center space-x-4">
+                    <button class="bg-yellow-500 hover:bg-yellow-600 text-blue-900 font-bold py-2 px-4 rounded-full transition flex items-center">
+                        <i class="fas fa-rocket mr-2"></i>
+                        <span>Upgrade</span>
+                    </button>
+                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-800 font-bold cursor-pointer hover:bg-blue-100 transition">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            <!-- Webhooks Tab - Updated with Archive Section -->
+            <div id="webhooks" class="tab-content active">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <!-- Webhooks Header with Tabs -->
+                    <div class="border-b border-gray-200">
+                        <nav class="flex -mb-px">
+                            <a href="#" class="webhook-subtab py-4 px-6 text-center border-b-2 font-medium text-sm border-blue-500 text-blue-600" data-subtab="integrations">
+                                <i class="fas fa-plug mr-2"></i>Integrations
+                            </a>
+                            <a href="#" class="webhook-subtab py-4 px-6 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-subtab="configuration">
+                                <i class="fas fa-cog mr-2"></i>Configuration
+                            </a>
+                            <a href="#" class="webhook-subtab py-4 px-6 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 active" data-subtab="archive">
+                                <i class="fas fa-archive mr-2"></i>Archive
+                            </a>
+                            <a href="#" class="webhook-subtab py-4 px-6 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-subtab="documentation">
+                                <i class="fas fa-book mr-2"></i>Documentation
+                            </a>
+                        </nav>
+                    </div>
+
+                    <!-- Archive Content -->
+                    <div id="webhook-archive" class="webhook-subcontent active p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="tech-font text-2xl font-bold text-blue-800 flex items-center">
+                                <i class="fas fa-archive mr-3"></i> Webhook Archive
+                            </h2>
+                            <div class="flex items-center space-x-3">
+                                <div class="relative">
+                                    <select class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                        <option>Last 7 days</option>
+                                        <option selected>Last 30 days</option>
+                                        <option>Last 90 days</option>
+                                        <option>All time</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <select class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                        <option>All statuses</option>
+                                        <option>Success</option>
+                                        <option>Error</option>
+                                        <option>Pending</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                                <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition flex items-center text-sm">
+                                    <i class="fas fa-download mr-2"></i> Export
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Archive Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-3">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">Total Webhooks</p>
+                                        <h3 class="text-xl font-bold text-gray-800">1,842</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-green-100 text-green-600 mr-3">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">Successful</p>
+                                        <h3 class="text-xl font-bold text-gray-800">1,723</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-red-100 text-red-600 mr-3">
+                                        <i class="fas fa-times-circle"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">Failed</p>
+                                        <h3 class="text-xl font-bold text-gray-800">87</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-3">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">Pending</p>
+                                        <h3 class="text-xl font-bold text-gray-800">32</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Archive Table -->
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endpoint</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trigger</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Archive Item 1 -->
+                                        <tr class="archive-item hover:bg-gray-50 cursor-pointer">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">#WH-3872</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900">CRM System</div>
+                                                <div class="text-sm text-gray-500">https://crm.example.com/api/webhook</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">New customer created</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="archive-badge archive-success">
+                                                    <i class="fas fa-check-circle mr-1"></i> Success
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <div>Today, 10:24 AM</div>
+                                                <div class="text-xs text-gray-400">Response: 204ms</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button class="text-blue-600 hover:text-blue-900 mr-3">View</button>
+                                                <button class="text-gray-600 hover:text-gray-900">Resend</button>
+                                            </td>
+                                        </tr>
+                                        
+                                        <!-- Archive Item 2 -->
+                                        <tr class="archive-item hover:bg-gray-50 cursor-pointer">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">#WH-3871</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900">ERP System</div>
+                                                <div class="text-sm text-gray-500">https://erp.example.com/api/v2/webhooks</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Inventory update</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="archive-badge archive-error">
+                                                    <i class="fas fa-times-circle mr-1"></i> Failed
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <div>Today, 09:45 AM</div>
+                                                <div class="text-xs text-gray-400">Error: Timeout</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button class="text-blue-600 hover:text-blue-900 mr-3">View</button>
+                                                <button class="text-gray-600 hover:text-gray-900">Retry</button>
+                                            </td>
+                                        </tr>
+                                        
+                                        <!-- Archive Item 3 -->
+                                        <tr class="archive-item hover:bg-gray-50 cursor-pointer">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">#WH-3870</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900">Marketing Platform</div>
+                                                <div class="text-sm text-gray-500">https://marketing.example.com/hooks</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Campaign completed</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="archive-badge archive-success">
+                                                    <i class="fas fa-check-circle mr-1"></i> Success
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <div>Today, 08:12 AM</div>
+                                                <div class="text-xs text-gray-400">Response: 156ms</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button class="text-blue-600 hover:text-blue-900 mr-3">View</button>
+                                                <button class="text-gray-600 hover:text-gray-900">Resend</button>
+                                            </td>
+                                        </tr>
+                                        
+                                        <!-- Archive Item 4 -->
+                                        <tr class="archive-item hover:bg-gray-50 cursor-pointer">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">#WH-3869</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900">Payment Gateway</div>
+                                                <div class="text-sm text-gray-500">https://payments.example.com/webhook</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Transaction processed</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="archive-badge archive-warning">
+                                                    <i class="fas fa-exclamation-triangle mr-1"></i> Warning
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <div>Yesterday, 4:32 PM</div>
+                                                <div class="text-xs text-gray-400">Response: 402ms (slow)</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button class="text-blue-600 hover:text-blue-900 mr-3">View</button>
+                                                <button class="text-gray-600 hover:text-gray-900">Resend</button>
+                                            </td>
+                                        </tr>
+                                        
+                                        <!-- Archive Item 5 -->
+                                        <tr class="archive-item hover:bg-gray-50 cursor-pointer">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">#WH-3868</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900">Support System</div>
+                                                <div class="text-sm text-gray-500">https://support.example.com/api/v3/hooks</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">New ticket created</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="archive-badge archive-error">
+                                                    <i class="fas fa-times-circle mr-1"></i> Failed
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <div>Yesterday, 2:15 PM</div>
+                                                <div class="text-xs text-gray-400">Error: 403 Forbidden</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button class="text-blue-600 hover:text-blue-900 mr-3">View</button>
+                                                <button class="text-gray-600 hover:text-gray-900">Retry</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Showing <span class="font-medium">1</span> to <span class="font-medium">5</span> of <span class="font-medium">1,842</span> results
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px archive-pagination" aria-label="Pagination">
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">Previous</span>
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                        <a href="#" aria-current="page" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                                            1
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                            2
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                            3
+                                        </a>
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                            ...
+                                        </span>
+                                        <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                            24
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">Next</span>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Archive Details Modal (Hidden by default) -->
+                        <div id="archive-details-modal" class="hidden fixed inset-0 overflow-y-auto z-50">
+                            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                                </div>
+                                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                        <div class="sm:flex sm:items-start">
+                                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                                <div class="flex justify-between items-center mb-4">
+                                                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                                        Webhook Request Details
+                                                    </h3>
+                                                    <button type="button" class="modal-close bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-gray-500">Webhook ID</h4>
+                                                            <p class="mt-1 text-sm text-gray-900 font-mono">#WH-3872</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-gray-500">Status</h4>
+                                                            <p class="mt-1">
+                                                                <span class="archive-badge archive-success">
+                                                                    <i class="fas fa-check-circle mr-1"></i> Success
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-gray-500">Trigger</h4>
+                                                            <p class="mt-1 text-sm text-gray-900">New customer created</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-gray-500">Date & Time</h4>
+                                                            <p class="mt-1 text-sm text-gray-900">Today, 10:24 AM</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-gray-500">Endpoint</h4>
+                                                            <p class="mt-1 text-sm text-gray-900">https://crm.example.com/api/webhook</p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-gray-500">Response Time</h4>
+                                                            <p class="mt-1 text-sm text-gray-900">204ms</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="border-t border-gray-200 pt-4 mt-4">
+                                                        <div class="flex justify-between items-center mb-2">
+                                                            <h4 class="text-sm font-medium text-gray-900">Request Headers</h4>
+                                                            <button class="text-blue-600 hover:text-blue-800 text-sm">
+                                                                <i class="fas fa-copy mr-1"></i> Copy
+                                                            </button>
+                                                        </div>
+                                                        <div class="bg-gray-50 p-3 rounded-lg">
+                                                            <pre class="text-xs text-gray-800 overflow-x-auto">{
+  "Content-Type": "application/json",
+  "X-NexusAI-Signature": "sha256=3d7574d7...",
+  "User-Agent": "NexusAI-Webhook/1.0",
+  "Accept": "*/*"
+}</pre>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="border-t border-gray-200 pt-4 mt-4">
+                                                        <div class="flex justify-between items-center mb-2">
+                                                            <h4 class="text-sm font-medium text-gray-900">Request Payload</h4>
+                                                            <button class="text-blue-600 hover:text-blue-800 text-sm">
+                                                                <i class="fas fa-copy mr-1"></i> Copy
+                                                            </button>
+                                                        </div>
+                                                        <div class="bg-gray-50 p-3 rounded-lg">
+                                                            <pre class="text-xs text-gray-800 overflow-x-auto">{
+  "event": "customer.created",
+  "data": {
+    "id": "cust_12345",
+    "name": "John Smith",
+    "email": "john@example.com",
+    "created_at": "2023-06-15T10:24:00Z"
+  },
+  "webhook_id": "wh_3872",
+  "timestamp": "2023-06-15T10:24:00Z"
+}</pre>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="border-t border-gray-200 pt-4 mt-4">
+                                                        <div class="flex justify-between items-center mb-2">
+                                                            <h4 class="text-sm font-medium text-gray-900">Response</h4>
+                                                            <button class="text-blue-600 hover:text-blue-800 text-sm">
+                                                                <i class="fas fa-copy mr-1"></i> Copy
+                                                            </button>
+                                                        </div>
+                                                        <div class="bg-gray-50 p-3 rounded-lg">
+                                                            <pre class="text-xs text-gray-800 overflow-x-auto">HTTP/1.1 200 OK
+Content-Type: application/json
+X-Request-ID: req_98765
+
+{
+  "status": "success",
+  "message": "Webhook received",
+  "processed_at": "2023-06-15T10:24:00.204Z"
+}</pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                        <button type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                            <i class="fas fa-redo mr-2"></i> Resend Webhook
+                                        </button>
+                                        <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Tabs (Dashboard, Analytics, Settings) -->
+            <!-- ... (previous content remains unchanged) ... -->
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <span class="tech-font font-bold">NexusAI Enterprise</span>
+                    </div>
+                    <div class="flex space-x-6">
+                        <a href="#" class="hover:text-yellow-400 transition">Privacy</a>
+                        <a href="#" class="hover:text-yellow-400 transition">Terms</a>
+                        <a href="#" class="hover:text-yellow-400 transition">Security</a>
+                        <a href="#" class="hover:text-yellow-400 transition">Contact</a>
+                    </div>
+                    <div class="mt-4 md:mt-0 flex space-x-4">
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-6 pt-6 border-t border-gray-700 text-center text-sm text-gray-400">
+                    <p>© 2023 NexusAI Technologies. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Main tabs
+            const tabs = document.querySelectorAll('.nav-tab');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Hide all tab contents
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Show the selected tab content
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+
+            // Webhook subtabs
+            const subtabs = document.querySelectorAll('.webhook-subtab');
+            const subcontents = document.querySelectorAll('.webhook-subcontent');
+            
+            subtabs.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remove active class from all subtabs
+                    subtabs.forEach(t => t.classList.remove('active'));
+                    subcontents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked subtab
+                    this.classList.add('active');
+                    
+                    // Show the selected subcontent
+                    const subtabId = this.getAttribute('data-subtab');
+                    document.getElementById(`webhook-${subtabId}`).classList.add('active');
+                });
+            });
+
+            // Archive item click handler
+            document.querySelectorAll('.archive-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.getElementById('archive-details-modal').classList.remove('hidden');
+                });
+            });
+
+            // Modal close handler
+            document.querySelector('.modal-close').addEventListener('click', function() {
+                document.getElementById('archive-details-modal').classList.add('hidden');
+            });
+
+            // Simple chatbot functionality
+            const messageInput = document.getElementById('messageInput');
+            const typingIndicator = document.getElementById('typingIndicator');
+            const chatContainer = document.querySelector('.chat-container');
+            
+            // Function to add a new message to the chat
+            function addMessage(content, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+                
+                const messageContent = `
+                    <div class="message ${isUser ? 'user-message' : 'bot-message'} p-4">
+                        <div class="flex items-${isUser ? 'end' : 'start'} space-x-2">
+                            ${!isUser ? `
+                                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-robot text-blue-600"></i>
+                                </div>
+                            ` : ''}
+                            <div>
+                                ${!isUser ? '<p class="font-bold text-blue-600">NexusAI</p>' : ''}
+                                <p class="${isUser ? '' : 'mt-1'}">${content}</p>
+                                <p class="text-xs opacity-80 mt-1 ${isUser ? 'text-right' : ''}">
+                                    ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                            </div>
+                            ${isUser ? `
+                                <div class="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center">
+                                    <i class="fas fa-user text-blue-800"></i>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                messageDiv.innerHTML = messageContent;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            // Handle sending messages
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && messageInput.value.trim() !== '') {
+                    const userMessage = messageInput.value;
+                    addMessage(userMessage, true);
+                    messageInput.value = '';
+                    
+                    // Show typing indicator
+                    typingIndicator.style.display = 'flex';
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    
+                    // Simulate bot response after a delay
+                    setTimeout(() => {
+                        typingIndicator.style.display = 'none';
+                        addMessage("I'm your NexusAI assistant. How can I help you today?");
+                    }, 1500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
