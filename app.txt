@@ -1,0 +1,817 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from dotenv import load_dotenv
+from openai import OpenAI, APIConnectionError, APIStatusError
+import os
+import json
+from datetime import datetime
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
+
+# Initialisation de l'application Flask
+app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:8000"}})
+
+# Configuration de la base de données SQLite
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///nexusai.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Initialisation du client OpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    print("Erreur: La clé API OpenAI n'est pas configurée dans le fichier .env.")
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# --- Définition des modèles de base de données ---
+class Sale(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    quarter = db.Column(db.String(10), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    product = db.Column(db.String(100), nullable=False)
+    date_recorded = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'quarter': self.quarter,
+            'amount': self.amount,
+            'product': self.product,
+            'date_recorded': self.date_recorded.isoformat()
+        }
+
+class Meeting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(200), nullable=False)
+    date = db.Column(db.String(10), nullable=False)
+    time = db.Column(db.String(5), nullable=False)
+    participants = db.Column(db.String(500))
+    status = db.Column(db.String(50), default='Scheduled')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'subject': self.subject,
+            'date': self.date,
+            'time': self.time,
+            'participants': json.loads(self.participants) if self.participants else [],
+            'status': self.status,
+            'created_at': self.created_at.isoformat()
+        }
+
+class Customer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    email = db.Column(db.String(100), nullable=True)
+    company = db.Column(db.String(100), nullable=True)
+    status = db.Column(db.String(50), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'company': self.company,
+            'status': self.status
+        }
+
+class Ticket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id_str = db.Column(db.String(50), nullable=False, unique=True)
+    subject = db.Column(db.String(200), nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+    assigned_to = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'ticket_id_str': self.ticket_id_str,
+            'subject': self.subject,
+            'status': self.status,
+            'assigned_to': self.assigned_to,
+            'created_at': self.created_at.isoformat()
+        }
+
+class SystemStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    system_name = db.Column(db.String(100), nullable=False, unique=True)
+    status = db.Column(db.String(50), nullable=False)
+    last_checked = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'system_name': self.system_name,
+            'status': self.status,
+            'last_checked': self.last_checked.isoformat()
+        }
+
+class Email(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    recipient = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(50), default='Sent')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'recipient': self.recipient,
+            'subject': self.subject,
+            'body': self.body,
+            'sent_at': self.sent_at.isoformat(),
+            'status': self.status
+        }
+
+class ArchivedDocument(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    document_id_str = db.Column(db.String(100), nullable=False, unique=True)
+    document_type = db.Column(db.String(100), nullable=False)
+    tags = db.Column(db.String(500), nullable=True)
+    archived_at = db.Column(db.DateTime, default=datetime.utcnow)
+    location = db.Column(db.String(200), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'document_id_str': self.document_id_str,
+            'document_type': self.document_type,
+            'tags': json.loads(self.tags) if self.tags else [],
+            'archived_at': self.archived_at.isoformat(),
+            'location': self.location
+        }
+
+class Employee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'created_at': self.created_at.isoformat()
+        }
+
+class ProjectTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_name = db.Column(db.String(100), nullable=False)
+    task_description = db.Column(db.String(500), nullable=False)
+    due_date = db.Column(db.String(10), nullable=True)
+    assigned_to = db.Column(db.String(100), nullable=True)
+    status = db.Column(db.String(50), default='Open')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'project_name': self.project_name,
+            'task_description': self.task_description,
+            'due_date': self.due_date,
+            'assigned_to': self.assigned_to,
+            'status': self.status,
+            'created_at': self.created_at.isoformat()
+        }
+
+# Initialisation des données
+def init_data():
+    with app.app_context():
+        db.create_all()
+        
+        # Tickets
+        existing_tickets = Ticket.query.count()
+        if existing_tickets < 7:
+            tickets = [
+                Ticket(ticket_id_str="TICKET-001", subject="Problème réseau", status="OPEN", assigned_to="Alice"),
+                Ticket(ticket_id_str="TICKET-002", subject="Bug logiciel", status="OPEN", assigned_to="Bob"),
+                Ticket(ticket_id_str="TICKET-003", subject="Demande de fonctionnalité", status="IN_PROGRESS", assigned_to="Charlie"),
+                Ticket(ticket_id_str="TICKET-004", subject="Panne serveur", status="CLOSED", assigned_to="Alice"),
+                Ticket(ticket_id_str="TICKET-005", subject="Mise à jour système", status="CLOSED", assigned_to="Bob"),
+                Ticket(ticket_id_str="TICKET-006", subject="Support utilisateur", status="OPEN", assigned_to="Charlie"),
+                Ticket(ticket_id_str="TICKET-007", subject="Test d'intégration", status="IN_PROGRESS", assigned_to="Alice")
+            ]
+            try:
+                for ticket in tickets:
+                    if not Ticket.query.filter_by(ticket_id_str=ticket.ticket_id_str).first():
+                        db.session.add(ticket)
+                db.session.commit()
+                print(f"Inserted {len(tickets) - existing_tickets} new tickets")
+            except Exception as e:
+                print(f"Erreur lors de l'insertion des tickets: {str(e)}")
+                db.session.rollback()
+
+        # SystemStatus
+        if not SystemStatus.query.first():
+            statuses = [
+                SystemStatus(system_name="Serveur Web", status="UP", last_checked=datetime.utcnow()),
+                SystemStatus(system_name="Base de données", status="UP", last_checked=datetime.utcnow()),
+                SystemStatus(system_name="API", status="DOWN", last_checked=datetime.utcnow())
+            ]
+            try:
+                db.session.bulk_save_objects(statuses)
+                db.session.commit()
+                print("Inserted 3 system statuses")
+            except Exception as e:
+                print(f"Erreur lors de l'insertion des statuts systèmes: {str(e)}")
+                db.session.rollback()
+
+        # Employee
+        if not Employee.query.first():
+            employees = [
+                Employee(name="Alice Smith", email="alice@example.com"),
+                Employee(name="Bob Johnson", email="bob@example.com"),
+                Employee(name="Charlie Brown", email="charlie@example.com")
+            ]
+            try:
+                for employee in employees:
+                    if not Employee.query.filter_by(email=employee.email).first():
+                        db.session.add(employee)
+                db.session.commit()
+                print("Inserted 3 employees")
+            except Exception as e:
+                print(f"Erreur lors de l'insertion des employés: {str(e)}")
+                db.session.rollback()
+
+# --- Fonctions utilitaires ---
+def get_sales_data(quarter: str = None) -> dict:
+    if quarter:
+        normalized_quarter = quarter.upper().replace('Q', 'T')
+        sale = Sale.query.filter_by(quarter=normalized_quarter).first()
+        if sale:
+            return {"status": "success", "data": sale.to_dict()}
+        return {"status": "error", "message": f"Données de vente non trouvées pour le trimestre {quarter}."}
+    all_sales = Sale.query.all()
+    return {"status": "success", "data": [s.to_dict() for s in all_sales]}
+
+def schedule_meeting(subject: str, date: str, time: str, participants: list = None) -> dict:
+    try:
+        new_meeting = Meeting(
+            subject=subject,
+            date=date,
+            time=time,
+            participants=json.dumps(participants) if participants else "[]"
+        )
+        db.session.add(new_meeting)
+        db.session.commit()
+        return {
+            "status": "success",
+            "message": f"Réunion '{subject}' planifiée pour le {date} à {time}.",
+            "details": new_meeting.to_dict()
+        }
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": f"Erreur lors de la planification de la réunion: {str(e)}"}
+
+def generate_report(report_type: str, period: str = None) -> dict:
+    if report_type.lower() == 'ventes':
+        sales_data = get_sales_data(period)
+        return {
+            "status": "success",
+            "message": f"Rapport de ventes pour la période '{period if period else 'toutes les périodes'}' généré.",
+            "report_details": {
+                "type": "ventes",
+                "period": period,
+                "data": sales_data["data"]
+            }
+        }
+    elif report_type.lower() == 'financier':
+        return {
+            "status": "success",
+            "message": f"Rapport financier pour la période '{period if period else 'toutes les périodes'}' généré.",
+            "report_details": {
+                "type": "financier",
+                "period": period,
+                "data": {"revenus": 5000000, "dépenses": 3000000}
+            }
+        }
+    return {"status": "error", "message": f"Type de rapport '{report_type}' non pris en charge."}
+
+def crm_query(query_type: str, client_name: str = None, ticket_id: str = None) -> dict:
+    if query_type == "client_details" and client_name:
+        customer = Customer.query.filter_by(name=client_name).first()
+        if customer:
+            return {"status": "success", "query_type": query_type, "details": customer.to_dict()}
+        return {"status": "error", "message": f"Client '{client_name}' non trouvé."}
+    elif query_type == "ticket_details" and ticket_id:
+        ticket = Ticket.query.filter_by(ticket_id_str=ticket_id).first()
+        if ticket:
+            return {"status": "success", "query_type": query_type, "details": ticket.to_dict()}
+        return {"status": "error", "message": f"Ticket '{ticket_id}' non trouvé."}
+    return {"status": "error", "message": "Type de requête CRM invalide ou paramètres manquants."}
+
+def get_system_status(system_name: str = None) -> dict:
+    if system_name:
+        status = SystemStatus.query.filter_by(system_name=system_name).first()
+        if status:
+            return {"status": "success", "system": status.to_dict()}
+        return {"status": "error", "message": f"Système '{system_name}' non trouvé."}
+    all_statuses = SystemStatus.query.all()
+    return {"status": "success", "systems": [s.to_dict() for s in all_statuses]}
+
+def send_email(recipient: str, subject: str, body: str) -> dict:
+    try:
+        new_email = Email(recipient=recipient, subject=subject, body=body, status='Sent')
+        db.session.add(new_email)
+        db.session.commit()
+        return {
+            "status": "success",
+            "message": f"E-mail envoyé à '{recipient}' avec le sujet '{subject}'.",
+            "details": new_email.to_dict()
+        }
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": f"Erreur lors de l'envoi de l'e-mail: {str(e)}"}
+
+def archive_document(document_id: str, document_type: str, tags: list = None) -> dict:
+    try:
+        existing_doc = ArchivedDocument.query.filter_by(document_id_str=document_id).first()
+        if existing_doc:
+            return {"status": "error", "message": f"Le document '{document_id}' est déjà archivé."}
+        new_document = ArchivedDocument(
+            document_id_str=document_id,
+            document_type=document_type,
+            tags=json.dumps(tags) if tags else "[]",
+            location="Cloud Storage"
+        )
+        db.session.add(new_document)
+        db.session.commit()
+        return {
+            "status": "success",
+            "message": f"Document '{document_id}' de type '{document_type}' archivé avec succès.",
+            "details": new_document.to_dict()
+        }
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": f"Erreur lors de l'archivage du document: {str(e)}"}
+
+def get_archived_documents() -> dict:
+    all_documents = ArchivedDocument.query.all()
+    if all_documents:
+        return {"status": "success", "documents": [doc.to_dict() for doc in all_documents]}
+    return {"status": "success", "documents": [], "message": "Aucun document archivé trouvé."}
+
+def get_employee_info(employee_name: str) -> dict:
+    employee = Employee.query.filter_by(name=employee_name).first()
+    if employee:
+        return {"status": "success", "employee": employee.to_dict()}
+    return {"status": "error", "message": f"Employé '{employee_name}' non trouvé."}
+
+def create_project_task(project_name: str, task_description: str, due_date: str = None, assigned_to: str = None) -> dict:
+    try:
+        new_task = ProjectTask(
+            project_name=project_name,
+            task_description=task_description,
+            due_date=due_date,
+            assigned_to=assigned_to,
+            status='Open'
+        )
+        db.session.add(new_task)
+        db.session.commit()
+        return {
+            "status": "success",
+            "message": f"Tâche '{task_description}' créée pour le projet '{project_name}'.",
+            "details": new_task.to_dict()
+        }
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": f"Erreur lors de la création de la tâche: {str(e)}"}
+
+# --- Fonctions disponibles et schémas OpenAI ---
+available_functions = {
+    "get_sales_data": get_sales_data,
+    "schedule_meeting": schedule_meeting,
+    "generate_report": generate_report,
+    "crm_query": crm_query,
+    "get_system_status": get_system_status,
+    "send_email": send_email,
+    "archive_document": archive_document,
+    "get_archived_documents": get_archived_documents,
+    "get_employee_info": get_employee_info,
+    "create_project_task": create_project_task,
+}
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sales_data",
+            "description": "Récupère les données de vente pour un trimestre spécifique ou toutes les ventes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "quarter": {"type": "string", "description": "Trimestre (ex. T1, T2, Q1, Q2), optionnel."}
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "schedule_meeting",
+            "description": "Planifie une réunion avec un sujet, une date, une heure et des participants optionnels.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "description": "Sujet de la réunion."},
+                    "date": {"type": "string", "description": "Date (AAAA-MM-JJ)."},
+                    "time": {"type": "string", "description": "Heure (HH:MM)."},
+                    "participants": {"type": "array", "items": {"type": "string"}, "description": "Liste des participants."}
+                },
+                "required": ["subject", "date", "time"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_report",
+            "description": "Génère un rapport (ventes ou financier) pour une période donnée.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "report_type": {"type": "string", "enum": ["ventes", "financier"], "description": "Type de rapport."},
+                    "period": {"type": "string", "description": "Période (ex. T1, annuel), optionnel."}
+                },
+                "required": ["report_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "crm_query",
+            "description": "Exécute une requête CRM pour les détails d'un client ou d'un ticket.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query_type": {"type": "string", "enum": ["client_details", "ticket_details"], "description": "Type de requête."},
+                    "client_name": {"type": "string", "description": "Nom du client (pour client_details)."},
+                    "ticket_id": {"type": "string", "description": "ID du ticket (pour ticket_details)."}
+                },
+                "required": ["query_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_system_status",
+            "description": "Récupère le statut d'un système ou de tous les systèmes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "system_name": {"type": "string", "description": "Nom du système (optionnel)."}
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_email",
+            "description": "Envoie un e-mail avec un destinataire, un sujet et un corps.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "recipient": {"type": "string", "description": "Adresse e-mail du destinataire."},
+                    "subject": {"type": "string", "description": "Sujet de l'e-mail."},
+                    "body": {"type": "string", "description": "Corps de l'e-mail."}
+                },
+                "required": ["recipient", "subject", "body"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "archive_document",
+            "description": "Archive un document avec un ID, un type et des tags optionnels.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_id": {"type": "string", "description": "ID unique du document."},
+                    "document_type": {"type": "string", "description": "Type de document (ex. contrat, facture)."},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags du document."}
+                },
+                "required": ["document_id", "document_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_archived_documents",
+            "description": "Récupère la liste des documents archivés.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_employee_info",
+            "description": "Récupère les informations d'un employé par son nom.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "employee_name": {"type": "string", "description": "Nom de l'employé."}
+                },
+                "required": ["employee_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_project_task",
+            "description": "Crée une tâche pour un projet avec une description, une date d'échéance optionnelle et un responsable.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project_name": {"type": "string", "description": "Nom du projet."},
+                    "task_description": {"type": "string", "description": "Description de la tâche."},
+                    "due_date": {"type": "string", "description": "Date d'échéance (AAAA-MM-JJ), optionnel."},
+                    "assigned_to": {"type": "string", "description": "Personne assignée, optionnel."}
+                },
+                "required": ["project_name", "task_description"]
+            }
+        }
+    }
+]
+
+# Route pour gérer les utilisateurs
+@app.route('/api/users', methods=['GET', 'POST'])
+@app.route('/api/users/<int:user_id>', methods=['PUT', 'DELETE'])
+def manage_users(user_id=None):
+    try:
+        if request.method == 'GET':
+            users = Employee.query.all()
+            return jsonify({
+                "status": "success",
+                "data": [user.to_dict() for user in users]
+            })
+
+        elif request.method == 'POST' and user_id is None:
+            data = request.get_json()
+            name = data.get('name')
+            email = data.get('email')
+            if not name or not email:
+                return jsonify({"status": "error", "message": "Nom et email requis"}), 400
+            if Employee.query.filter_by(email=email).first():
+                return jsonify({"status": "error", "message": "Email déjà utilisé"}), 400
+            new_user = Employee(name=name, email=email)
+            db.session.add(new_user)
+            db.session.commit()
+            return jsonify({"status": "success", "data": new_user.to_dict()})
+
+        elif request.method == 'PUT' and user_id:
+            user = Employee.query.get_or_404(user_id)
+            data = request.get_json()
+            name = data.get('name')
+            email = data.get('email')
+            if not name or not email:
+                return jsonify({"status": "error", "message": "Nom et email requis"}), 400
+            if email != user.email and Employee.query.filter_by(email=email).first():
+                return jsonify({"status": "error", "message": "Email déjà utilisé"}), 400
+            user.name = name
+            user.email = email
+            db.session.commit()
+            return jsonify({"status": "success", "data": user.to_dict()})
+
+        elif request.method == 'DELETE' and user_id:
+            user = Employee.query.get_or_404(user_id)
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({"status": "success", "message": "Utilisateur supprimé"})
+
+    except Exception as e:
+        print(f"Erreur dans /api/users: {str(e)}")
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Erreur lors de la gestion des utilisateurs: {str(e)}"}), 500
+
+# --- Routes Flask ---
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    if not OPENAI_API_KEY:
+        return jsonify({"reply": "Erreur: Clé API OpenAI non configurée."}), 500
+
+    try:
+        data = request.get_json()
+        messages = data.get('messages')
+        if not messages or not isinstance(messages, list):
+            return jsonify({"reply": "Requête invalide : le tableau 'messages' est manquant ou invalide."}), 400
+
+        # Ajouter le prompt système
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Vous êtes NexusAI, un assistant IA d'entreprise. Vous pouvez appeler des fonctions pour interagir avec les systèmes de l'entreprise. "
+                    "Si des informations nécessaires (comme le nom du projet pour une tâche) sont manquantes, demandez des précisions à l'utilisateur avant d'exécuter la fonction. "
+                    "Fournissez des réponses claires et concises en français, formatées en HTML pour l'affichage."
+                )
+            }
+        ] + messages
+
+        # Premier appel à l'API OpenAI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto"
+        )
+
+        message_from_ai = response.choices[0].message
+        tool_calls = message_from_ai.tool_calls
+
+        if tool_calls:
+            messages.append({"role": "assistant", "content": message_from_ai.content, "tool_calls": tool_calls})
+
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
+                tool_call_id = tool_call.id
+
+                if function_name in available_functions:
+                    function_result = available_functions[function_name](**function_args)
+                    formatted_result_content = ""
+
+                    if function_name == "get_sales_data":
+                        if function_result["status"] == "success":
+                            data = function_result["data"]
+                            if isinstance(data, list):
+                                formatted_result_content = "<b>Ventes :</b><br>" + "<br>".join(
+                                    [f"Trimestre {sale['quarter']}: {sale['amount']} EUR (Produit: {sale['product']})" for sale in data]
+                                )
+                            else:
+                                formatted_result_content = f"<b>Vente pour {data['quarter']}:</b><br>Produit: {data['product']}<br>Montant: {data['amount']} EUR"
+                        else:
+                            formatted_result_content = f"<b>Erreur:</b> {function_result['message']}"
+
+                    elif function_name == "schedule_meeting":
+                        formatted_result_content = f"<b>Réunion planifiée :</b><br>{function_result['message']}"
+                        if function_result.get("details"):
+                            details = function_result["details"]
+                            formatted_result_content += f"<br>Sujet: {details['subject']}<br>Date: {details['date']} à {details['time']}"
+                            if details['participants']:
+                                formatted_result_content += f"<br>Participants: {', '.join(details['participants'])}"
+
+                    elif function_name == "generate_report":
+                        formatted_result_content = f"<b>Rapport généré :</b><br>{function_result['message']}"
+                        if function_result.get("report_details"):
+                            details = function_result["report_details"]
+                            formatted_result_content += f"<br>Type: {details['type']}"
+                            if details.get('period'):
+                                formatted_result_content += f"<br>Période: {details['period']}"
+
+                    elif function_name == "crm_query":
+                        if function_result["status"] == "success":
+                            details = function_result["details"]
+                            if function_result["query_type"] == "client_details":
+                                formatted_result_content = f"<b>Client :</b><br>Nom: {details['name']}<br>Email: {details['email']}<br>Entreprise: {details['company']}<br>Statut: {details['status']}"
+                            else:
+                                formatted_result_content = f"<b>Ticket {details['ticket_id_str']}:</b><br>Sujet: {details['subject']}<br>Statut: {details['status']}<br>Assigné à: {details['assigned_to'] or 'Non assigné'}"
+                        else:
+                            formatted_result_content = f"<b>Erreur:</b> {function_result['message']}"
+
+                    elif function_name == "get_system_status":
+                        if function_result["status"] == "success":
+                            if "systems" in function_result:
+                                formatted_result_content = "<b>Statuts des systèmes :</b><br>" + "<br>".join(
+                                    [f"{system['system_name']}: {system['status'].capitalize()} (Vérifié: {system['last_checked']})" for system in function_result["systems"]]
+                                )
+                            else:
+                                system = function_result["system"]
+                                formatted_result_content = f"<b>{system['system_name']}:</b> {system['status'].capitalize()} (Vérifié: {system['last_checked']})"
+                        else:
+                            formatted_result_content = f"<b>Erreur:</b> {function_result['message']}"
+
+                    elif function_name == "send_email":
+                        formatted_result_content = f"<b>E-mail envoyé :</b><br>{function_result['message']}"
+                        if function_result.get("details"):
+                            details = function_result["details"]
+                            formatted_result_content += f"<br>Destinataire: {details['recipient']}<br>Sujet: {details['subject']}"
+
+                    elif function_name == "archive_document":
+                        formatted_result_content = f"<b>Document archivé :</b><br>{function_result['message']}"
+                        if function_result.get("details"):
+                            details = function_result["details"]
+                            formatted_result_content += f"<br>ID: {details['document_id_str']}<br>Type: {details['document_type']}<br>Emplacement: {details['location']}"
+                            if details['tags']:
+                                formatted_result_content += f"<br>Tags: {', '.join(details['tags'])}"
+
+                    elif function_name == "get_archived_documents":
+                        if function_result["status"] == "success":
+                            if function_result["documents"]:
+                                formatted_result_content = "<b>Documents archivés :</b><br>" + "<br>".join(
+                                    [f"ID: {doc['document_id_str']} ({doc['document_type']}), Tags: {', '.join(doc['tags']) if doc['tags'] else 'Aucun'}" for doc in function_result["documents"]]
+                                )
+                            else:
+                                formatted_result_content = "Aucun document archivé trouvé."
+                        else:
+                            formatted_result_content = f"<b>Erreur:</b> {function_result['message']}"
+
+                    elif function_name == "get_employee_info":
+                        if function_result["status"] == "success":
+                            employee = function_result["employee"]
+                            formatted_result_content = f"<b>Employé :</b><br>Nom: {employee['name']}<br>Email: {employee['email']}<br>Créé le: {employee['created_at']}"
+                        else:
+                            formatted_result_content = f"<b>Erreur:</b> {function_result['message']}"
+
+                    elif function_name == "create_project_task":
+                        formatted_result_content = f"<b>Tâche créée :</b><br>{function_result['message']}"
+                        if function_result.get("details"):
+                            details = function_result["details"]
+                            formatted_result_content += f"<br>Projet: {details['project_name']}<br>Description: {details['task_description']}"
+                            if details['assigned_to']:
+                                formatted_result_content += f"<br>Assigné à: {details['assigned_to']}"
+                            if details['due_date']:
+                                formatted_result_content += f"<br>Échéance: {details['due_date']}"
+
+                    messages.append({
+                        "tool_call_id": tool_call_id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": formatted_result_content
+                    })
+                else:
+                    messages.append({
+                        "tool_call_id": tool_call_id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": json.dumps({"error": f"Fonction {function_name} non trouvée."})
+                    })
+
+            # Deuxième appel à l'API OpenAI
+            second_response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages
+            )
+            return jsonify({"reply": second_response.choices[0].message.content})
+
+        return jsonify({"reply": message_from_ai.content})
+
+    except APIConnectionError as e:
+        print(f"Erreur de connexion à l'API OpenAI: {str(e)}")
+        return jsonify({"reply": f"Erreur de connexion à l'IA. Veuillez vérifier votre connexion Internet. (Erreur: {str(e)})"}), 500
+    except APIStatusError as e:
+        print(f"Erreur de statut de l'API OpenAI (code: {e.status_code}): {str(e)}")
+        if e.status_code == 401:
+            return jsonify({"reply": "Clé API OpenAI invalide ou non autorisée."}), 401
+        elif e.status_code == 429:
+            return jsonify({"reply": "Limites de débit de l'API OpenAI atteintes. Réessayez plus tard."}), 429
+        return jsonify({"reply": f"Erreur de l'API OpenAI (code: {e.status_code}). (Erreur: {str(e)})"}), 500
+    except Exception as e:
+        print(f"Erreur inattendue dans /api/chat: {str(e)}")
+        return jsonify({"reply": f"Erreur technique inattendue. (Erreur: {str(e)})"}), 500
+
+@app.route('/api/system_statuses', methods=['GET'])
+def get_system_statuses_api():
+    try:
+        all_statuses = SystemStatus.query.all()
+        return jsonify({"status": "success", "data": [s.to_dict() for s in all_statuses]})
+    except Exception as e:
+        print(f"Erreur dans /api/system_statuses: {str(e)}")
+        return jsonify({"status": "error", "message": f"Erreur lors de la récupération des statuts: {str(e)}"}), 500
+
+@app.route('/api/sales_data', methods=['GET'])
+def get_sales_data_api():
+    try:
+        sales = Sale.query.all()
+        return jsonify({
+            "status": "success",
+            "data": [s.to_dict() for s in sales]
+        })
+    except Exception as e:
+        print(f"Erreur dans /api/sales_data: {str(e)}")
+        return jsonify({"status": "error", "message": f"Erreur lors de la récupération des données: {str(e)}"}), 500
+
+@app.route('/api/tickets', methods=['GET'])
+def get_tickets_api():
+    try:
+        tickets = Ticket.query.all()
+        ticket_counts = {}
+        for ticket in tickets:
+            status = ticket.status.lower()
+            ticket_counts[status] = ticket_counts.get(status, 0) + 1
+        return jsonify({
+            "status": "success",
+            "data": ticket_counts
+        })
+    except Exception as e:
+        print(f"Erreur dans /api/tickets: {str(e)}")
+        return jsonify({"status": "error", "message": f"Erreur lors de la récupération des données: {str(e)}"}), 500
+
+if __name__ == "__main__":
+    init_data()
+    app.run(port=5000, debug=True)

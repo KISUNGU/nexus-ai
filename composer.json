@@ -1,0 +1,13 @@
+{
+    "require": {
+        "openai-php/client": "^0.9",
+        "vlucas/phpdotenv": "^5.0"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}

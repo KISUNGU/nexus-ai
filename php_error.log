@@ -1,0 +1,55 @@
+[09-Jul-2025 13:38:01 UTC] PHP Deprecated:  stripos(): Passing null to parameter #1 ($haystack) of type string is deprecated in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 174
+[09-Jul-2025 13:38:01 UTC] PHP Stack trace:
+[09-Jul-2025 13:38:01 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 13:38:01 UTC] PHP   2. stripos($haystack = NULL, $needle = 'chiffres de vente') C:\wamp64\www\realcom\nexus-ai\api\chat.php:174
+[09-Jul-2025 13:38:01 UTC] PHP Deprecated:  stripos(): Passing null to parameter #1 ($haystack) of type string is deprecated in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 174
+[09-Jul-2025 13:38:01 UTC] PHP Stack trace:
+[09-Jul-2025 13:38:01 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 13:38:01 UTC] PHP   2. stripos($haystack = NULL, $needle = 'T2') C:\wamp64\www\realcom\nexus-ai\api\chat.php:174
+[09-Jul-2025 13:38:01 UTC] PHP Deprecated:  stripos(): Passing null to parameter #1 ($haystack) of type string is deprecated in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 174
+[09-Jul-2025 13:38:01 UTC] PHP Stack trace:
+[09-Jul-2025 13:38:01 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 13:38:01 UTC] PHP   2. stripos($haystack = NULL, $needle = 'T1') C:\wamp64\www\realcom\nexus-ai\api\chat.php:174
+[09-Jul-2025 13:45:57 UTC] PHP Deprecated:  stripos(): Passing null to parameter #1 ($haystack) of type string is deprecated in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 174
+[09-Jul-2025 13:45:57 UTC] PHP Stack trace:
+[09-Jul-2025 13:45:57 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 13:45:57 UTC] PHP   2. stripos($haystack = NULL, $needle = 'chiffres de vente') C:\wamp64\www\realcom\nexus-ai\api\chat.php:174
+[09-Jul-2025 13:45:57 UTC] PHP Deprecated:  stripos(): Passing null to parameter #1 ($haystack) of type string is deprecated in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 174
+[09-Jul-2025 13:45:57 UTC] PHP Stack trace:
+[09-Jul-2025 13:45:57 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 13:45:57 UTC] PHP   2. stripos($haystack = NULL, $needle = 'T2') C:\wamp64\www\realcom\nexus-ai\api\chat.php:174
+[09-Jul-2025 13:45:57 UTC] PHP Deprecated:  stripos(): Passing null to parameter #1 ($haystack) of type string is deprecated in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 174
+[09-Jul-2025 13:45:57 UTC] PHP Stack trace:
+[09-Jul-2025 13:45:57 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 13:45:57 UTC] PHP   2. stripos($haystack = NULL, $needle = 'T1') C:\wamp64\www\realcom\nexus-ai\api\chat.php:174
+[09-Jul-2025 13:51:19 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method OpenAI\Client::create() in C:\wamp64\www\realcom\nexus-ai\api\chat.php:74
+Stack trace:
+#0 {main}
+  thrown in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 74
+[09-Jul-2025 14:04:15 UTC] PHP Fatal error:  Uncaught TypeError: OpenAI\Client::__construct(): Argument #1 ($transporter) must be of type OpenAI\Contracts\TransporterContract, string given, called in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 72 and defined in C:\wamp64\www\realcom\nexus-ai\vendor\openai-php\client\src\Client.php:35
+Stack trace:
+#0 C:\wamp64\www\realcom\nexus-ai\api\chat.php(72): OpenAI\Client->__construct('sk-proj-5I82cU8...')
+#1 {main}
+  thrown in C:\wamp64\www\realcom\nexus-ai\vendor\openai-php\client\src\Client.php on line 35
+[09-Jul-2025 14:43:24 UTC] PHP Fatal error:  Uncaught Error: Undefined constant Dotenv\Dotenv::Dotenv in C:\wamp64\www\realcom\nexus-ai\api\chat.php:13
+Stack trace:
+#0 {main}
+  thrown in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 13
+[09-Jul-2025 15:34:38 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:36:53 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:38:20 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:39:38 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:39:51 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:40:34 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:40:47 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 15:44:54 UTC] Erreur: Clé API OpenAI non configurée ou valeur par défaut dans api/chat.php
+[09-Jul-2025 16:09:15 UTC] PHP Fatal error:  Uncaught TypeError: OpenAI\Client::__construct(): Argument #1 ($transporter) must be of type OpenAI\Contracts\TransporterContract, string given, called in C:\wamp64\www\realcom\nexus-ai\api\chat.php on line 72 and defined in C:\wamp64\www\realcom\nexus-ai\vendor\openai-php\client\src\Client.php:35
+Stack trace:
+#0 C:\wamp64\www\realcom\nexus-ai\api\chat.php(72): OpenAI\Client->__construct('sk-proj-5I82cU8...')
+#1 {main}
+  thrown in C:\wamp64\www\realcom\nexus-ai\vendor\openai-php\client\src\Client.php on line 35
+[09-Jul-2025 16:18:06 UTC] PHP Fatal error:  Cannot declare class OpenAI, because the name is already in use in C:\wamp64\www\realcom\nexus-ai\vendor\openai-php\client\src\OpenAI.php on line 8
+[09-Jul-2025 16:18:06 UTC] PHP Stack trace:
+[09-Jul-2025 16:18:06 UTC] PHP   1. {main}() C:\wamp64\www\realcom\nexus-ai\api\chat.php:0
+[09-Jul-2025 16:18:06 UTC] PHP   2. Composer\Autoload\ClassLoader->loadClass($class = 'OpenAI\\OpenAI') C:\wamp64\www\realcom\nexus-ai\api\chat.php:67
+[09-Jul-2025 16:18:06 UTC] PHP   3. Composer\Autoload\{closure:C:\wamp64\www\realcom\nexus-ai\vendor\composer\ClassLoader.php:575-577}($file = 'C:\\wamp64\\www\\realcom\\nexus-ai\\vendor\\composer/../openai-php/client/src\\OpenAI.php') C:\wamp64\www\realcom\nexus-ai\vendor\composer\ClassLoader.php:427

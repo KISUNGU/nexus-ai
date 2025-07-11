@@ -1,0 +1,18 @@
+[
+    {
+        "assigned_to": "Support Team",
+        "created_at": "2025-07-11 13:55:03.274523",
+        "id": 1,
+        "status": "Ouvert",
+        "subject": "Problème de connexion",
+        "ticket_id_str": "TICKET-001"
+    },
+    {
+        "assigned_to": "Product Team",
+        "created_at": "2025-07-11 13:55:03.274523",
+        "id": 2,
+        "status": "Fermé",
+        "subject": "Demande de fonctionnalité",
+        "ticket_id_str": "TICKET-002"
+    }
+]
